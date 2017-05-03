@@ -337,7 +337,7 @@ class Fanova(object):
             if logging.getLogger().level <= logging.DEBUG:
                 self._process = Popen(cmds, stdout=sys.stdout, stderr=sys.stdout)
             else:
-                self._process = Popen(cmds, stdout=fnull, stderr=sys.stdout)#stdout=fnull, stderr=fnull)
+                self._process = Popen(cmds, stdout=None, stderr=None)#stdout=fnull, stderr=fnull)
 
     def _start_connection(self):
         logging.debug("starting connection...")

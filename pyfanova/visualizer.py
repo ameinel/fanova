@@ -1,6 +1,7 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib
+matplotlib.use('Qt4Agg')
+import matplotlib.pyplot as plt
 from matplotlib import cm,colors
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -58,7 +59,9 @@ class Visualizer(object):
             self.plot_pairwise_marginal(param1, param2).show()
             plt.savefig(outfile_name)
 
-    def plot_categorical_marginal(self, param, ax = None, mode = 'bar'):
+    def plot_categorical_marginal(self, param, ax = None, mode = 'bar',
+                        invert_y=False,
+                        xoffset=0, plot_specs=dict(color='red', fmt='o')):
         categorical_size = self._fanova.get_config_space().get_categorical_size(param)
 
         labels = self._fanova.get_config_space().get_categorical_values(param)
@@ -66,17 +69,35 @@ class Visualizer(object):
         logging.debug(labels)
 
         indices = np.asarray(range(categorical_size))
+
         width = 0.5
         marginals = [self._fanova.get_categorical_marginal_for_value(param, i) for i in range(categorical_size)]
+
         mean, std = zip(*marginals)
+        if invert_y:
+            mean = -np.asarray(mean)
+        else:
+            mean = np.asarray(mean)
 
         if not ax:
             ax = plt.axes()
 
         if mode == 'bar':
             ax.bar(indices, mean, width, color='red', yerr=std)
+        elif mode == 'errorbar':
+            ax.errorbar(indices+xoffset, mean,
+                            yerr=std, **plot_specs)
+            limoffset = 0.2*categorical_size
+            ax.set_xlim(0-limoffset, 1.2*(categorical_size-1+xoffset))
+            ax.set_xticks(indices)
+            ax.set_xticklabels(labels)
+            #plt.show()
+
         elif mode == 'boxplot':
             b = ax.boxplot([[x] for x in mean], 0, '', labels=labels)
+            plt.setp(b['boxes'], color='black')
+            plt.setp(b['whiskers'], color='black')
+            plt.setp(b['fliers'], color='red', marker='+')
             min_y = mean[0]
             max_y = mean[0]
             # blow up boxes
@@ -89,9 +110,7 @@ class Visualizer(object):
                 min_y = min(min_y, y[0] - std_)
                 max_y = max(max_y, y[2] + std_)
             ax.set_ylim([min_y, max_y])
-        ax.set_xticks(indices + width / 2.0, labels)
-        ax.set_ylabel("Performance")
-
+            ax.set_ylabel("Performance")
         return plt
 
     def _check_param(self, param):
@@ -277,7 +296,12 @@ class Visualizer(object):
         return fig
 
 
-    def plot_marginal(self, param, lower_bound=0, upper_bound=1, is_int=False, resolution=100, ax = None):
+    def plot_marginal(self, param, lower_bound=0, upper_bound=1, is_int=False,
+                        resolution=100, ax = None,
+                        invert_y = False,
+                        line_specs=dict(color='b'),
+                        shade_specs=dict(facecolor='red', alpha=0.6),
+                        eval_specs=dict(marker='o', color = '0.85')):
         if isinstance(param, int):
             dim = param
             param_name = self._fanova.get_config_space().get_parameter_names()[dim]
@@ -286,6 +310,7 @@ class Visualizer(object):
             dim = self._fanova.param_name2dmin[param]
             param_name = param
 
+        #resolution = 12
         grid = np.linspace(lower_bound, upper_bound, resolution)
         display_grid = [self._fanova.unormalize_value(param_name, value) for value in grid]
 
@@ -295,22 +320,32 @@ class Visualizer(object):
             (m, s) = self._fanova.get_marginal_for_value(dim, grid[i])
             mean[i] = m
             std[i] = s
-        mean = np.asarray(mean)
+        if invert_y:
+            mean = -np.asarray(mean)
+        else:
+            mean = np.asarray(mean)
         std = np.asarray(std)
 
         lower_curve = mean - std
         upper_curve = mean + std
 
         if not ax:
-            ax = plt.axes()
+            plt.figure()
+            ax = plt.gca()
 
-        if np.diff(display_grid).std() > 0.000001 and param_name in self._fanova.get_config_space().get_continuous_parameters():
-            #HACK for detecting whether it's a log parameter, because the config space doesn't expose this information
-            ax.semilogx(display_grid, mean, 'b')
-            print "printing %s semilogx" % param_name
+        if not is_int:
+            if np.diff(display_grid).std() > 0.000001 and param_name in self._fanova.get_config_space().get_continuous_parameters():
+                #HACK for detecting whether it's a log parameter, because the config space doesn't expose this information
+                ax.semilogx(display_grid, mean, 'b')
+                print "printing %s semilogx" % param_name
+            else:
+                ax.plot(display_grid, mean, **line_specs)
+            ax.fill_between(display_grid, upper_curve, lower_curve, **shade_specs)
         else:
-            ax.plot(display_grid, mean, 'b')
-        ax.fill_between(display_grid, upper_curve, lower_curve, facecolor='red', alpha=0.6)
+            #ax.plot(display_grid, mean, )
+            ax.errorbar(display_grid, mean, yerr=std,**line_specs)
+            #ax.plot(display_grid, mean, **line_specs)
+            #plt.show()
         ax.set_xlabel(param_name)
 
         ax.set_ylabel("Marginalized Z-AUC")
@@ -336,8 +371,8 @@ class Visualizer(object):
                 (m,s) = self._fanova.get_marginal_for_value(dim, self._fanova.normalize_value(param_name,value))
                 eval_y_values.append(m)
 
-
-        ax.plot(eval_x_values,eval_y_values,'o',color = '0.85')
+        if eval_specs != None:
+            ax.plot(eval_x_values,eval_y_values,linestyle='None',**eval_specs)
 
         print("do_custom_scaling is: {}".format(self.do_custom_scaling))
         if self.do_custom_scaling:
