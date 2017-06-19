@@ -124,7 +124,10 @@ class Visualizer(object):
 
         return (dim, param_name)
 
-    def plot_pairwise_marginal(self, param_1, param_2, lower_bound_1=0, upper_bound_1=1, lower_bound_2=0, upper_bound_2=1, resolution=200, ax=None):
+    def plot_pairwise_marginal(self, param_1, param_2, 
+                                zlabel="zAUC",lower_bound_1=0,
+                                upper_bound_1=1,lower_bound_2=0,
+                                upper_bound_2=1,resolution=200, ax=None):
 
         dim1, param_name_1 = self._check_param(param_1)
         dim2, param_name_2 = self._check_param(param_2)
@@ -159,7 +162,7 @@ class Visualizer(object):
             #contour(display_xx, display_yy, zz, rstride=1, cstride=1, cmap=cm.jet, linewidth=0, antialiased=False, alpha = 0.5)
             ax.set_xlabel(param_name_1)
             ax.set_ylabel(param_name_2)
-            ax.set_zlabel("Marginalized Z-AUC")
+            ax.set_zlabel(zlabel)
 
             fig.colorbar(surface, shrink=0.5, aspect=5)
 
@@ -205,7 +208,7 @@ class Visualizer(object):
             else:
                 print(ax)
                 ax1, ax2 = ax
-            n_colorbar = 10 #granularity of the colorbar
+            n_colorbar = 15 #granularity of the colorbar
 
             fig = plt.gcf()
             #ax = fig.gca(projection='3d')
@@ -216,14 +219,14 @@ class Visualizer(object):
 
             #cmap_custom = colors.LinearSegmentedColormap('my_map', cdict, N=256, gamma=1.0)
             if self.do_custom_scaling:
-                cont_mean = ax1.contourf(display_xx, display_yy, zz, rstride=1, cstride=1,cmap = cm.jet_r, linewidth=0, antialiased=False, alpha = 0.5,vmin= self.custom_scale[0], vmax=self.custom_scale[1])
+                cont_mean = ax1.contourf(display_xx, display_yy, zz, n_colorbar, rstride=1, cstride=1,cmap = cm.jet_r, linewidth=0, antialiased=False, alpha = 0.5,vmin= self.custom_scale[0], vmax=self.custom_scale[1])
             else:
-                cont_mean = ax1.contourf(display_xx, display_yy, zz, rstride=1, cstride=1,cmap = cm.jet_r, linewidth=0, antialiased=False, alpha = 0.5)
+                cont_mean = ax1.contourf(display_xx, display_yy, zz, n_colorbar, rstride=1, cstride=1,cmap = cm.jet_r, linewidth=0, antialiased=False, alpha = 0.5)
             cont_sd = ax2.contourf(display_xx, display_yy, zz_standard_dev, rstride=1, cstride=1,cmap = cm.autumn_r, linewidth=0, antialiased=False, alpha = 0.5)
 
             ax1.set_xlabel(param_name_1)
             ax1.set_ylabel(param_name_2)
-            ax1.set_title('Marginalized Z-AUC')
+            ax1.set_title(zlabel)
 
             ax2.set_xlabel(param_name_1)
             #ax2.set_ylabel(param_name_2)
