@@ -3,6 +3,7 @@ import matplotlib
 matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as plt
 from matplotlib import cm,colors
+from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import os
@@ -127,7 +128,9 @@ class Visualizer(object):
     def plot_pairwise_marginal(self, param_1, param_2, 
                                 zlabel="zAUC",lower_bound_1=0,
                                 upper_bound_1=1,lower_bound_2=0,
-                                upper_bound_2=1,resolution=200, ax=None):
+                                upper_bound_2=1,resolution=200, ax=None,
+                                single_plot = False,n_colorbar= 15,
+                                global_zlim = None, flip_z=True):
 
         dim1, param_name_1 = self._check_param(param_1)
         dim2, param_name_2 = self._check_param(param_2)
@@ -142,16 +145,16 @@ class Visualizer(object):
                 zz[i * resolution + j],zz_standard_dev[i * resolution + j] = self._fanova._get_marginal_for_value_pair(dim1, dim2, x_value, y_value)
 
         zz = np.reshape(zz, [resolution, resolution])
+        if flip_z:
+            print("flipping z values")
+            zz = np.negative(zz)
+            
         zz_standard_dev = np.reshape(zz_standard_dev, [resolution, resolution])
 
         display_grid_1 = [self._fanova.unormalize_value(param_name_1, value) for value in grid_1]
         display_grid_2 = [self._fanova.unormalize_value(param_name_2, value) for value in grid_2]
 
         display_xx, display_yy = np.meshgrid(display_grid_1, display_grid_2)
-
-        single_plot = False
-
-
 
         if single_plot:
             if not ax:
@@ -208,20 +211,23 @@ class Visualizer(object):
             else:
                 print(ax)
                 ax1, ax2 = ax
-            n_colorbar = 15 #granularity of the colorbar
 
             fig = plt.gcf()
             #ax = fig.gca(projection='3d')
 
             #ax = Axes3D(fig)
-            plt.subplots_adjust(wspace = 0.4)
+            plt.subplots_adjust(wspace = 0.2)
             #surface = ax.plot_surface(display_xx, display_yy, zz, rstride=1, cstride=1, cmap=cm.jet, linewidth=0, antialiased=False, alpha = 0.5)
 
             #cmap_custom = colors.LinearSegmentedColormap('my_map', cdict, N=256, gamma=1.0)
-            if self.do_custom_scaling:
-                cont_mean = ax1.contourf(display_xx, display_yy, zz, n_colorbar, rstride=1, cstride=1,cmap = cm.jet_r, linewidth=0, antialiased=False, alpha = 0.5,vmin= self.custom_scale[0], vmax=self.custom_scale[1])
+            if global_zlim is not None:
+                levels = MaxNLocator(n_colorbar).tick_values(global_zlim[0], global_zlim[1])
+                cont_mean = ax1.contourf(display_xx, display_yy, zz, levels, rstride=1, cstride=1,cmap = cm.seismic, 
+                                        linewidth=0, antialiased=False, alpha = 0.5)
+                #cont_mean = ax1.contourf(display_xx, display_yy, zz, n_colorbar, rstride=1, cstride=1,cmap = cm.jet_r, linewidth=0, antialiased=False, alpha = 0.5,vmin= self.custom_scale[0], vmax=self.custom_scale[1])
             else:
-                cont_mean = ax1.contourf(display_xx, display_yy, zz, n_colorbar, rstride=1, cstride=1,cmap = cm.jet_r, linewidth=0, antialiased=False, alpha = 0.5)
+                cont_mean = ax1.contourf(display_xx, display_yy, zz, n_colorbar, rstride=1, cstride=1,cmap = cm.seismic, linewidth=0, antialiased=False, alpha = 0.5)
+                
             cont_sd = ax2.contourf(display_xx, display_yy, zz_standard_dev, rstride=1, cstride=1,cmap = cm.autumn_r, linewidth=0, antialiased=False, alpha = 0.5)
 
             ax1.set_xlabel(param_name_1)
@@ -238,8 +244,12 @@ class Visualizer(object):
             div = make_axes_locatable(ax1)
             cax = div.append_axes("right", size="12%", pad=0.05)
 
-
-            cbar = plt.colorbar(cont_mean, cax=cax, ticks = np.linspace(np.amin(zz),np.amax(zz),num = n_colorbar), format="%.3g")
+            if global_zlim is not None:
+                print("using given zlims")
+                cbar = plt.colorbar(cont_mean, cax=cax, ticks = np.linspace(global_zlim[0],global_zlim[1],num = n_colorbar), format="%.3g")
+            else:
+                print("did not find zlims")
+                cbar = plt.colorbar(cont_mean, cax=cax, ticks = np.linspace(np.amin(zz),np.amax(zz),num = n_colorbar), format="%.3g")
 
             #cbar.set_label('Marginalized Z-AUC',labelpad=10)#, size=22)
             #ax1.xaxis.set_visible(False)
@@ -377,7 +387,7 @@ class Visualizer(object):
         if eval_specs != None:
             ax.plot(eval_x_values,eval_y_values,linestyle='None',**eval_specs)
 
-        print("do_custom_scaling is: {}".format(self.do_custom_scaling))
+        print("do_custom_scaling_is: {}".format(self.do_custom_scaling))
         if self.do_custom_scaling:
             ax.set_ylim(self.custom_scale)
             ax.tick_params(axis='both', which='major', pad=20)
