@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import os
 import logging
-
+import pandas as pd
 
 class Visualizer(object):
 
@@ -130,7 +130,8 @@ class Visualizer(object):
                                 upper_bound_1=1,lower_bound_2=0,
                                 upper_bound_2=1,resolution=200, ax=None,
                                 single_plot = False,n_colorbar= 15,
-                                global_zlim = None, flip_z=True):
+                                global_zlim = None, flip_z=True,
+                                show_eval_points=False,fname=None):
 
         dim1, param_name_1 = self._check_param(param_1)
         dim2, param_name_2 = self._check_param(param_2)
@@ -269,40 +270,43 @@ class Visualizer(object):
             TK: add the points to plot where the function was evaluated
 
             """
-            eval_values_param_1 = self._fanova.get_test_values_for_param(param_name_1)
-            eval_values_param_2 = self._fanova.get_test_values_for_param(param_name_2)
+            if show_eval_points:
+                X,_ = self.read_csv_file(fname)
+                
+                #eval_values_param_1 = self._fanova.get_test_values_for_param(param_name_1)
+                #eval_values_param_2 = self._fanova.get_test_values_for_param(param_name_2)
+                
+                eval_values_param_1 = X.as_matrix(columns=[param_name_1])
+                eval_values_param_2 = X.as_matrix(columns=[param_name_2])
+                
+                eval_x_values_1 = []
+                eval_x_values_2 = []
+                eval_y_values = []
 
+                if param_name_1 in self._fanova.get_config_space().get_integer_parameters():
+                    for value in eval_values_param_1:
+                        eval_x_values_1.append(int(value))
+                else:
+                    for value in eval_values_param_1:
+                        eval_x_values_1.append(float(value))
 
+                if param_name_2 in self._fanova.get_config_space().get_integer_parameters():
+                    for value in eval_values_param_2:
+                        eval_x_values_2.append(int(value))
+                else:
+                    for value in eval_values_param_2:
+                        eval_x_values_2.append(float(value))
 
-            eval_x_values_1 = []
-            eval_x_values_2 = []
-            eval_y_values = []
+                for ii in range(len(eval_x_values_1)):
+                    normalized_val_1 = self._fanova.normalize_value(param_name_1,eval_x_values_1[ii])
+                    normalized_val_2 = self._fanova.normalize_value(param_name_2,eval_x_values_2[ii])
+                    eval_y_values.append(self._fanova._get_marginal_for_value_pair(dim1,dim2,normalized_val_1,normalized_val_2)[0])
 
-            if param_name_1 in self._fanova.get_config_space().get_integer_parameters():
-                for value in eval_values_param_1:
-                    eval_x_values_1.append(int(value))
-            else:
-                for value in eval_values_param_1:
-                    eval_x_values_1.append(float(value))
+                #ax1.scatter(eval_x_values_1, eval_x_values_2, eval_y_values, antialiased=False,marker='x',c = 'black')
+                #ax2.scatter(eval_x_values_1, eval_x_values_2, eval_y_values, antialiased=False,marker='x',c = 'black')
 
-            if param_name_2 in self._fanova.get_config_space().get_integer_parameters():
-                for value in eval_values_param_2:
-                    eval_x_values_2.append(int(value))
-            else:
-                for value in eval_values_param_2:
-                    eval_x_values_2.append(float(value))
-
-
-            for ii in range(len(eval_x_values_1)):
-                normalized_val_1 = self._fanova.normalize_value(param_name_1,eval_x_values_1[ii])
-                normalized_val_2 = self._fanova.normalize_value(param_name_2,eval_x_values_2[ii])
-                eval_y_values.append(self._fanova._get_marginal_for_value_pair(dim1,dim2,normalized_val_1,normalized_val_2)[0])
-
-            #ax1.scatter(eval_x_values_1, eval_x_values_2, eval_y_values, antialiased=False,marker='x',c = 'black')
-            #ax2.scatter(eval_x_values_1, eval_x_values_2, eval_y_values, antialiased=False,marker='x',c = 'black')
-
-            ax1.scatter(eval_x_values_1, eval_x_values_2, s = 10,antialiased=False,marker='x',c = 'black')
-            ax2.scatter(eval_x_values_1, eval_x_values_2, s = 10,antialiased=False,marker='x',c = 'black')
+                ax1.scatter(eval_x_values_1, eval_x_values_2, s = 10,antialiased=False,marker='x',c = 'black')
+                ax2.scatter(eval_x_values_1, eval_x_values_2, s = 10,antialiased=False,marker='x',c = 'black')
 
 
 
@@ -397,3 +401,23 @@ class Visualizer(object):
             #plt.ylim = self.custom_scale
 
         return ax
+    
+    def read_csv_file(self, filename):
+        
+        X = pd.read_csv(filename)
+        y = X[X.columns[-1]]
+        X = X[X.columns[0:-1]]
+
+        self._num_of_params = len(X.columns)
+
+        logging.debug("number of parameters: " + str(self._num_of_params))
+        self._paramDescription = dict()
+        for idx, dtype in enumerate(X.dtypes):
+            cX = X[X.columns[idx]]
+            if dtype == np.float64 or dtype == np.int64:
+                cBounds = [cX.min(), cX.max()]
+            else:
+                cBounds = cX.unique()
+            self._paramDescription[X.columns[idx]] = [cBounds, cBounds[0], dtype]
+
+        return X, y
