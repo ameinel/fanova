@@ -9,6 +9,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import os
 import logging
 import pandas as pd
+import seaborn as sns
 
 class Visualizer(object):
 
@@ -219,17 +220,19 @@ class Visualizer(object):
             #ax = Axes3D(fig)
             plt.subplots_adjust(wspace = 0.2)
             #surface = ax.plot_surface(display_xx, display_yy, zz, rstride=1, cstride=1, cmap=cm.jet, linewidth=0, antialiased=False, alpha = 0.5)
-
+            
+            my_cmap = sns.diverging_palette(240,10, s=80, l=30, n=n_colorbar, center="light", as_cmap=True)
+                        
             #cmap_custom = colors.LinearSegmentedColormap('my_map', cdict, N=256, gamma=1.0)
             if global_zlim is not None:
                 levels = MaxNLocator(n_colorbar).tick_values(global_zlim[0], global_zlim[1])
-                cont_mean = ax1.contourf(display_xx, display_yy, zz, levels, rstride=1, cstride=1,cmap = cm.seismic, 
+                cont_mean = ax1.contourf(display_xx, display_yy, zz, levels, rstride=1, cstride=1,cmap = my_cmap, 
                                         linewidth=0, antialiased=False, alpha = 0.5)
                 #cont_mean = ax1.contourf(display_xx, display_yy, zz, n_colorbar, rstride=1, cstride=1,cmap = cm.jet_r, linewidth=0, antialiased=False, alpha = 0.5,vmin= self.custom_scale[0], vmax=self.custom_scale[1])
             else:
                 cont_mean = ax1.contourf(display_xx, display_yy, zz, n_colorbar, rstride=1, cstride=1,cmap = cm.seismic, linewidth=0, antialiased=False, alpha = 0.5)
                 
-            cont_sd = ax2.contourf(display_xx, display_yy, zz_standard_dev, rstride=1, cstride=1,cmap = cm.autumn_r, linewidth=0, antialiased=False, alpha = 0.5)
+            cont_sd = ax2.contourf(display_xx, display_yy, zz_standard_dev, rstride=1, cstride=1,cmap = my_cmap, linewidth=0, antialiased=False, alpha = 0.5)
 
             ax1.set_xlabel(param_name_1)
             ax1.set_ylabel(param_name_2)
@@ -271,13 +274,15 @@ class Visualizer(object):
 
             """
             if show_eval_points:
-                X,_ = self.read_csv_file(fname)
-                
+                               
+                # this crashes in some cases -> not clear why?!
                 #eval_values_param_1 = self._fanova.get_test_values_for_param(param_name_1)
                 #eval_values_param_2 = self._fanova.get_test_values_for_param(param_name_2)
                 
-                eval_values_param_1 = X.as_matrix(columns=[param_name_1])
-                eval_values_param_2 = X.as_matrix(columns=[param_name_2])
+                X,_ = self.read_csv_file(fname)
+                print('Found {} evaluations'.format(X.shape[0]))
+                eval_values_param_1 = X[param_name_1].values
+                eval_values_param_2 = X[param_name_2].values
                 
                 eval_x_values_1 = []
                 eval_x_values_2 = []
