@@ -306,14 +306,14 @@ class Visualizer(object):
                     normalized_val_1 = self._fanova.normalize_value(param_name_1,eval_x_values_1[ii])
                     normalized_val_2 = self._fanova.normalize_value(param_name_2,eval_x_values_2[ii])
                     eval_y_values.append(self._fanova._get_marginal_for_value_pair(dim1,dim2,normalized_val_1,normalized_val_2)[0])
-
+                
+                eval_x_values_1 = np.asarray(eval_x_values_1)
+                eval_x_values_2 = np.asarray(eval_x_values_2)
                 #ax1.scatter(eval_x_values_1, eval_x_values_2, eval_y_values, antialiased=False,marker='x',c = 'black')
                 #ax2.scatter(eval_x_values_1, eval_x_values_2, eval_y_values, antialiased=False,marker='x',c = 'black')
-
+                
                 ax1.scatter(eval_x_values_1, eval_x_values_2, s = 10,antialiased=False,marker='x',c = 'black')
                 ax2.scatter(eval_x_values_1, eval_x_values_2, s = 10,antialiased=False,marker='x',c = 'black')
-
-
 
         return fig
 
